@@ -17,12 +17,16 @@ public class PlayerTransformController : MonoBehaviour
     [SerializeField] float moveLerpTime, mouseLerpTime; // how quickly we speed up and slow down
     float finalxRotate, finalyRotate;
 
-
     [Header("Camera")]
     [SerializeField] float aimSensitivity;
     [SerializeField] float minYAngle, maxYAngle;
     float currentSensitivity, yRotate, xRotate;
     bool IsMouseOverGameWindow { get { return !(0 > Input.mousePosition.x || 0 > Input.mousePosition.y || Screen.width < Input.mousePosition.x || Screen.height < Input.mousePosition.y); } }
+
+    [Header("Building System")]
+    public BlockClass highlightedBlock;
+    public BlockClass heldBlock;
+    [SerializeField] float buildRange;
 
     private void Start()
     {
@@ -34,6 +38,26 @@ public class PlayerTransformController : MonoBehaviour
 
     // Update is called once per renderered frame
     void Update()
+    {
+        PlayerStep();
+    }
+
+    void PlayerStep()
+    {
+        // get inputs
+        GetInputs();
+
+        // move
+        Move();
+
+        // look around with our mouse
+        MouseLook();
+
+        // run our building selection system
+        BuildingSelectionSystem();
+    }
+
+    void GetInputs()
     {
         Cursor.lockState = CursorLockMode.Locked;
 
@@ -48,6 +72,10 @@ public class PlayerTransformController : MonoBehaviour
         moveV = playerHead.forward * pAxisVL;
         moveH = playerHead.right * pAxisHL;
 
+    }
+
+    void Move()
+    {
         RaycastHit groundedHit;
         Physics.Raycast(transform.position, Vector3.down, out groundedHit, 1.5f, Physics.AllLayers, QueryTriggerInteraction.Ignore);
 
@@ -87,6 +115,10 @@ public class PlayerTransformController : MonoBehaviour
         move = new Vector3((moveH.x + moveV.x), verticalVelocity / moveSpeed, (moveH.z + moveV.z));
         transform.position += (move * Time.deltaTime * moveSpeed);
 
+    }
+
+    void MouseLook()
+    {
         // check our dynamic bool to see if our mouse is on the screen
         if (IsMouseOverGameWindow)
         {
@@ -106,4 +138,24 @@ public class PlayerTransformController : MonoBehaviour
         }
     }
 
+    // our building selection system
+    void BuildingSelectionSystem()
+    {
+        // fire a ray forward from the camera
+        RaycastHit blockHit;
+        Physics.Raycast(playerHead.position, playerHead.forward, out blockHit, buildRange, Physics.AllLayers, QueryTriggerInteraction.Ignore);
+        // if we hit anything
+        if (blockHit.transform != null)
+        {
+            // if we hit a block
+            if (blockHit.transform.tag == "Block")
+            {
+                if (blockHit.transform.gameObject.GetComponent<BlockClass>())
+                {
+                    highlightedBlock = blockHit.transform.gameObject.GetComponent<BlockClass>();
+                    blockHit.transform.gameObject.GetComponent<BlockClass>().Highlight();
+                }
+            }
+        }
+    }
 }

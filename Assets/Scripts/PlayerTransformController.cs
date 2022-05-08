@@ -24,10 +24,10 @@ public class PlayerTransformController : MonoBehaviour
     bool IsMouseOverGameWindow { get { return !(0 > Input.mousePosition.x || 0 > Input.mousePosition.y || Screen.width < Input.mousePosition.x || Screen.height < Input.mousePosition.y); } }
 
     [Header("Building System")]
-    public BlockClass highlightedBlock;
-    public BlockClass heldBlock;
     [SerializeField] float buildRange;
-    public Transform holdPoint; // where we hold stuff
+    [SerializeField] BuildNode selectedBuildNode;
+    [SerializeField] GameObject currentBuildableObject; // our current buildable object
+    [SerializeField] Transform holdPoint;
 
     private void Start()
     {
@@ -149,88 +149,29 @@ public class PlayerTransformController : MonoBehaviour
     void BuildingSelectionSystem()
     {
         // fire a ray forward from the camera
-        RaycastHit blockHit;
-        Physics.Raycast(playerHead.position, playerHead.forward, out blockHit, buildRange, Physics.AllLayers, QueryTriggerInteraction.Ignore);
-        // if we hit anything
-        if (blockHit.transform != null)
+        RaycastHit hit;
+        Physics.Raycast(playerHead.position, playerHead.forward, out hit, buildRange, Physics.AllLayers, QueryTriggerInteraction.Ignore);
+
+        if (hit.transform)
         {
-            if (blockHit.transform.tag != "Block")
+            holdPoint.position = hit.point;
+
+            Debug.Log("hit transform");
+            // check to see if we hit a build node
+            if (hit.transform.tag == "Node")
             {
-                // move our hold point there
-                holdPoint.transform.position = blockHit.point;
+                Debug.Log("hit node");
+                selectedBuildNode = hit.transform.gameObject.GetComponent<BuildNode>();
             }
-
-            // if we hit a block
-            if (blockHit.transform.tag == "Block")
-            {
-                if (blockHit.transform.gameObject.GetComponent<BlockClass>())
-                {
-                    if (!heldBlock)
-                    {
-                        // set our highlighted block to this
-                        highlightedBlock = blockHit.transform.gameObject.GetComponent<BlockClass>();
-                    }
-                }
-            }
-
-            if (blockHit.transform.tag == "Face")
-            {
-                if (blockHit.transform.gameObject.GetComponent<BlockPlacementFace>())
-                {
-                    if (heldBlock)
-                    {
-                        holdPoint = blockHit.transform.gameObject.GetComponent<BlockPlacementFace>().placementSpot;
-                    }
-                }
-            }
-
-
-        }
-
-        // if we do not hit anything
-        if (blockHit.transform == null)
-        {
-            // move our hold point to that hit point
-            Vector3 targetPos = playerHead.position + (playerHead.forward * buildRange);
-
-            holdPoint.position = targetPos;
-
-            highlightedBlock = null;
         }
     }
 
-    // building pickup and placement system
     void BuildingManipulationSystem()
     {
-        // if we click
-        if (Input.GetMouseButtonDown(0))
+        if (selectedBuildNode != null && (Input.GetMouseButtonDown(0)))
         {
-            // if we are highlighting something and click
-            if (highlightedBlock != null)
-            {
-                // then make it the held block
-                highlightedBlock.Pickup();
-                // set it 
-                heldBlock = highlightedBlock;
-                // remove the old highlighted block
-                highlightedBlock = null;
-            }
-
-            // if we are holding something and click
-            if (heldBlock != null)
-            {
-                // if we are highlighting a placement spot
-
-                // if we are not highlighting anything
-                if (highlightedBlock == null)
-                {
-                    // run the placement function
-                    heldBlock.Place();
-                    // we are not holding anything
-                    heldBlock = null;
-
-                }
-            }
+            // place an object forward of the node
+            Instantiate(currentBuildableObject, selectedBuildNode.transform.position + selectedBuildNode.transform.forward, Quaternion.identity);
         }
     }
 }

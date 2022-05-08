@@ -27,6 +27,7 @@ public class PlayerTransformController : MonoBehaviour
     public BlockClass highlightedBlock;
     public BlockClass heldBlock;
     [SerializeField] float buildRange;
+    public Transform holdPoint; // where we hold stuff
 
     private void Start()
     {
@@ -54,7 +55,7 @@ public class PlayerTransformController : MonoBehaviour
         MouseLook();
 
         // run our building selection system
-        BuildingSelectionSystem();
+        BuildingSystem();
     }
 
     void GetInputs()
@@ -138,6 +139,12 @@ public class PlayerTransformController : MonoBehaviour
         }
     }
 
+    void BuildingSystem()
+    {
+        BuildingSelectionSystem();
+        BuildingManipulationSystem();
+    }
+
     // our building selection system
     void BuildingSelectionSystem()
     {
@@ -147,13 +154,81 @@ public class PlayerTransformController : MonoBehaviour
         // if we hit anything
         if (blockHit.transform != null)
         {
+            if (blockHit.transform.tag != "Block")
+            {
+                // move our hold point there
+                holdPoint.transform.position = blockHit.point;
+            }
+
             // if we hit a block
             if (blockHit.transform.tag == "Block")
             {
                 if (blockHit.transform.gameObject.GetComponent<BlockClass>())
                 {
-                    highlightedBlock = blockHit.transform.gameObject.GetComponent<BlockClass>();
-                    blockHit.transform.gameObject.GetComponent<BlockClass>().Highlight();
+                    if (!heldBlock)
+                    {
+                        // set our highlighted block to this
+                        highlightedBlock = blockHit.transform.gameObject.GetComponent<BlockClass>();
+                    }
+                }
+            }
+
+            if (blockHit.transform.tag == "Face")
+            {
+                if (blockHit.transform.gameObject.GetComponent<BlockPlacementFace>())
+                {
+                    if (heldBlock)
+                    {
+                        holdPoint = blockHit.transform.gameObject.GetComponent<BlockPlacementFace>().placementSpot;
+                    }
+                }
+            }
+
+
+        }
+
+        // if we do not hit anything
+        if (blockHit.transform == null)
+        {
+            // move our hold point to that hit point
+            Vector3 targetPos = playerHead.position + (playerHead.forward * buildRange);
+
+            holdPoint.position = targetPos;
+
+            highlightedBlock = null;
+        }
+    }
+
+    // building pickup and placement system
+    void BuildingManipulationSystem()
+    {
+        // if we click
+        if (Input.GetMouseButtonDown(0))
+        {
+            // if we are highlighting something and click
+            if (highlightedBlock != null)
+            {
+                // then make it the held block
+                highlightedBlock.Pickup();
+                // set it 
+                heldBlock = highlightedBlock;
+                // remove the old highlighted block
+                highlightedBlock = null;
+            }
+
+            // if we are holding something and click
+            if (heldBlock != null)
+            {
+                // if we are highlighting a placement spot
+
+                // if we are not highlighting anything
+                if (highlightedBlock == null)
+                {
+                    // run the placement function
+                    heldBlock.Place();
+                    // we are not holding anything
+                    heldBlock = null;
+
                 }
             }
         }
